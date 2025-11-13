@@ -52,11 +52,16 @@ export default function BudgetsPage({ session }) {
 
   async function onSubmit(e) {
     e.preventDefault();
+    const limitNumber = Number(form.limit);
+    if (!Number.isFinite(limitNumber) || limitNumber < 0) {
+      show('error', 'Please enter a valid non-negative number for limit');
+      return;
+    }
     const payload = {
       user_id: userId,
       month,
       category_id: form.category_id || null,
-      limit: Number(form.limit)
+      limit: limitNumber
     };
     try {
       if (editing) {
@@ -118,7 +123,8 @@ export default function BudgetsPage({ session }) {
             ) : (
               budgets.map((b) => {
                 const spent = Number(spentMap[b.category_id || 'uncategorized'] || 0);
-                const util = b.limit ? spent / b.limit : 0;
+                const limitVal = Number(b.limit || 0);
+                const util = limitVal > 0 ? spent / limitVal : 0;
                 let barColor = 'var(--primary)';
                 if (util >= 1) barColor = 'var(--error)';
                 else if (util >= 0.8) barColor = 'var(--secondary)';

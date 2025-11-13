@@ -62,13 +62,18 @@ export default function ExpensesPage({ session }) {
   async function onSubmit(e) {
     e.preventDefault();
     try {
+      const amt = Number(form.amount);
+      if (!Number.isFinite(amt) || amt < 0) {
+        show('error', 'Please enter a valid non-negative amount');
+        return;
+      }
       let receipt_url = editing?.receipt_url || null;
       if (file) {
         receipt_url = await uploadReceipt(file, userId);
       }
       if (editing) {
         const updated = await updateExpense(editing.id, {
-          amount: Number(form.amount),
+          amount: amt,
           date: form.date,
           merchant: form.merchant || null,
           category_id: form.category_id || null,
@@ -82,7 +87,7 @@ export default function ExpensesPage({ session }) {
         const optimistic = {
           id: tmpId, // keep in UI only
           user_id: userId,
-          amount: Number(form.amount),
+          amount: amt,
           date: form.date,
           merchant: form.merchant || null,
           category_id: form.category_id || null,

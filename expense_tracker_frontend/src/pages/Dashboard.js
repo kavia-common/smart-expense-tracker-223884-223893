@@ -51,6 +51,11 @@ export default function DashboardPage({ session }) {
       show('error', 'Amount and date are required');
       return;
     }
+    // Enforce YYYY-MM-DD format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) {
+      show('error', 'Date must be in YYYY-MM-DD format');
+      return;
+    }
     try {
       const tmpId = `tmp-${Date.now()}`;
       const optimistic = {
