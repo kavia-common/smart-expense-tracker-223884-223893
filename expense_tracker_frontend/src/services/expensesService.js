@@ -16,9 +16,13 @@ function toMessage(err) {
  * - date is provided (DB requires non-null)
  * - amount is a finite number
  * - nullable fields are set to null when empty
+ * - id is never sent to the backend (DB generates UUID)
  */
 function normalizeExpense(expense) {
   const e = { ...expense };
+  // Never allow client-provided id to go to DB; let DB default generate it.
+  if ('id' in e) delete e.id;
+
   if (!e.user_id) {
     throw new Error('Missing user_id on expense payload');
   }
@@ -35,6 +39,16 @@ function normalizeExpense(expense) {
   e.notes = e.notes || null;
   e.receipt_url = e.receipt_url || null;
   return e;
+}
+
+/**
+ * Remove id from arbitrary payloads before writes.
+ * Useful for callers that may accidentally include a temporary id.
+ */
+function stripId(obj) {
+  const copy = { ...obj };
+  if ('id' in copy) delete copy.id;
+  return copy;
 }
 
 // PUBLIC_INTERFACE
@@ -62,9 +76,18 @@ export async function listExpenses({ userId, fromDate, toDate, categoryId }) {
 
 // PUBLIC_INTERFACE
 export async function createExpense(expense) {
-  // optimistic insert is left to the caller; this just forwards to DB
+  /**
+   * PUBLIC_INTERFACE
+   * Create an expense row. Any client-supplied id is removed to avoid UUID errors.
+   * Returns the server-generated row including id via select('*').single().
+   */
   try {
-    const { data, error } = await supabase.from('expenses').insert(expense).select().single();
+    const payload = normalizeExpense(stripId(expense));
+    const { data, error } = await supabase
+      .from('expenses')
+      .insert(payload)
+      .select('*')
+      .single();
     if (error) throw error;
     return data;
   } catch (e) {
@@ -88,10 +111,15 @@ export async function createExpenseSafe(expense) {
    * - date: required (YYYY-MM-DD)
    * - category_id: nullable
    * - merchant/notes/receipt_url: nullable
+   * Also ensures any client-provided id is stripped so DB generates a UUID.
    */
   try {
-    const normalized = normalizeExpense(expense);
-    const { data, error } = await supabase.from('expenses').insert(normalized).select().single();
+    const normalized = normalizeExpense(stripId(expense));
+    const { data, error } = await supabase
+      .from('expenses')
+      .insert(normalized)
+      .select('*')
+      .single();
     if (error) throw error;
     return data;
   } catch (e) {
@@ -108,6 +136,7 @@ export async function updateExpense(id, patch) {
   try {
     // Apply normalization to patch where applicable (but do not require user_id)
     const norm = { ...patch };
+    if ('id' in norm) delete norm.id; // never update primary key
     if (norm.amount != null) {
       const amt = Number(norm.amount);
       if (!Number.isFinite(amt)) throw new Error('Amount must be a number');

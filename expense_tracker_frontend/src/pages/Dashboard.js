@@ -48,8 +48,9 @@ export default function DashboardPage({ session }) {
       return;
     }
     try {
+      const tmpId = `tmp-${Date.now()}`;
       const optimistic = {
-        id: `tmp-${Date.now()}`,
+        id: tmpId, // keep only in UI state
         user_id: userId,
         amount: Number(form.amount),
         category_id: form.category_id || null,
@@ -58,10 +59,22 @@ export default function DashboardPage({ session }) {
         notes: null,
         receipt_url: null
       };
+      // Show optimistic row
       setRecent((prev) => [optimistic, ...prev].slice(0, 5));
       setAdding(false);
       setForm({ amount: '', date: new Date().toISOString().slice(0, 10), merchant: '', category_id: '' });
-      await createExpenseSafe(optimistic);
+
+      // Build payload without id for DB insert
+      const payload = {
+        user_id: userId,
+        amount: Number(optimistic.amount),
+        category_id: optimistic.category_id,
+        merchant: optimistic.merchant,
+        date: optimistic.date,
+        notes: optimistic.notes,
+        receipt_url: optimistic.receipt_url
+      };
+      await createExpenseSafe(payload);
       show('success', 'Expense added');
       // Refetch recent/spent lightly
       const rec = await listExpenses({ userId });

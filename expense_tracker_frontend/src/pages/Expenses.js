@@ -78,8 +78,9 @@ export default function ExpensesPage({ session }) {
         setItems((prev) => prev.map((x) => (x.id === editing.id ? updated : x)));
         show('success', 'Expense updated');
       } else {
+        const tmpId = `tmp-${Date.now()}`;
         const optimistic = {
-          id: `tmp-${Date.now()}`,
+          id: tmpId, // keep in UI only
           user_id: userId,
           amount: Number(form.amount),
           date: form.date,
@@ -90,7 +91,17 @@ export default function ExpensesPage({ session }) {
         };
         setItems((prev) => [optimistic, ...prev]);
         try {
-          const created = await createExpenseSafe(optimistic);
+          // Build payload without id for DB
+          const payload = {
+            user_id: userId,
+            amount: optimistic.amount,
+            date: optimistic.date,
+            merchant: optimistic.merchant,
+            category_id: optimistic.category_id,
+            notes: optimistic.notes,
+            receipt_url: optimistic.receipt_url
+          };
+          const created = await createExpenseSafe(payload);
           setItems((prev) => prev.map((x) => (x.id === optimistic.id ? created : x)));
           show('success', 'Expense added');
         } catch (err) {
