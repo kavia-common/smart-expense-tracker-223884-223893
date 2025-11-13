@@ -205,10 +205,10 @@ export async function totalSpentInMonth({ userId, month }) {
   /**
    * PUBLIC_INTERFACE
    * Returns the numeric total spent for a given user within the provided month (YYYY-MM).
-   * - Computes the month date range with actual last day via new Date(year, month+1, 0)
-   * - Filters by user_id and date range
-   * - Uses aggregate sum to avoid client-side summation overhead
-   * - Safely returns 0 on empty/null results and logs errors
+   * - Computes month boundaries (YYYY-MM-01 to last day of month, zero-padded)
+   * - Filters by user_id and date range with .gte/.lte
+   * - Aggregates on client to avoid PostgREST unsupported syntax
+   * - Handles null/empty as 0 and coerces to number
    */
   try {
     if (!userId) throw new Error('totalSpentInMonth requires userId');
@@ -218,28 +218,26 @@ export async function totalSpentInMonth({ userId, month }) {
     const start = `${month}-01`;
     const [yStr, mStr] = month.split('-');
     const y = parseInt(yStr, 10);
-    const m0 = parseInt(mStr, 10) - 1; // zero-based for JS Date
-    const endDate = new Date(y, m0 + 1, 0); // last day of target month in local time
-    // Format YYYY-MM-DD; since Supabase compares dates (no timezone), this is fine
-    const end = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const m0 = parseInt(mStr, 10) - 1; // zero-based month
+    const endDate = new Date(y, m0 + 1, 0); // last day of target month
+    const end = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 10);
 
-    // Perform an aggregate sum. supabase-js does not expose sum directly in select, but we can select a count expression.
-    // Use PostgREST computed column selection with `sum(amount)` aliased as total.
-    const { data, error } = await supabase
+    // Query only amounts within the range for this user
+    const { data, error, status } = await supabase
       .from('expenses')
-      .select('total:sum(amount)')
+      .select('amount')
       .eq('user_id', userId)
       .gte('date', start)
-      .lte('date', end)
-      .single();
+      .lte('date', end);
 
+    if (status === 404) return 0;
     if (error) throw error;
 
-    // data may be null or { total: null } when no rows match
-    const total = Number(data?.total || 0);
+    const total = (data || []).reduce((sum, row) => sum + Number(row?.amount || 0), 0);
     return Number.isFinite(total) ? total : 0;
   } catch (e) {
-    // Surface detailed message to console; callers can toast if needed
     console.error('totalSpentInMonth error', e?.message || e);
     return 0;
   }
