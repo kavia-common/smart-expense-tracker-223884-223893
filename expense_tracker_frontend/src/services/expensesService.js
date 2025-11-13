@@ -9,6 +9,34 @@ function toMessage(err) {
   return `${msg}${code}`;
 }
 
+/**
+ * Normalize and validate an expense payload before sending to Supabase.
+ * Ensures:
+ * - user_id is present (required by RLS)
+ * - date is provided (DB requires non-null)
+ * - amount is a finite number
+ * - nullable fields are set to null when empty
+ */
+function normalizeExpense(expense) {
+  const e = { ...expense };
+  if (!e.user_id) {
+    throw new Error('Missing user_id on expense payload');
+  }
+  if (!e.date) {
+    throw new Error('Missing date on expense payload');
+  }
+  const amt = Number(e.amount);
+  if (!Number.isFinite(amt)) {
+    throw new Error('Amount must be a number');
+  }
+  e.amount = amt;
+  e.category_id = e.category_id || null;
+  e.merchant = e.merchant || null;
+  e.notes = e.notes || null;
+  e.receipt_url = e.receipt_url || null;
+  return e;
+}
+
 // PUBLIC_INTERFACE
 export async function listExpenses({ userId, fromDate, toDate, categoryId }) {
   try {
@@ -51,9 +79,46 @@ export async function createExpense(expense) {
 }
 
 // PUBLIC_INTERFACE
+export async function createExpenseSafe(expense) {
+  /**
+   * PUBLIC_INTERFACE
+   * Create expense with validation against expected schema:
+   * - amount: numeric
+   * - user_id: required
+   * - date: required (YYYY-MM-DD)
+   * - category_id: nullable
+   * - merchant/notes/receipt_url: nullable
+   */
+  try {
+    const normalized = normalizeExpense(expense);
+    const { data, error } = await supabase.from('expenses').insert(normalized).select().single();
+    if (error) throw error;
+    return data;
+  } catch (e) {
+    const msg = toMessage(e);
+    console.error('createExpenseSafe error', e);
+    const wrapped = new Error(`Create expense failed: ${msg}`);
+    wrapped.cause = e;
+    throw wrapped;
+  }
+}
+
+// PUBLIC_INTERFACE
 export async function updateExpense(id, patch) {
   try {
-    const { data, error } = await supabase.from('expenses').update(patch).eq('id', id).select().single();
+    // Apply normalization to patch where applicable (but do not require user_id)
+    const norm = { ...patch };
+    if (norm.amount != null) {
+      const amt = Number(norm.amount);
+      if (!Number.isFinite(amt)) throw new Error('Amount must be a number');
+      norm.amount = amt;
+    }
+    if (norm.category_id === '') norm.category_id = null;
+    if (norm.merchant === '') norm.merchant = null;
+    if (norm.notes === '') norm.notes = null;
+    if (norm.receipt_url === '') norm.receipt_url = null;
+
+    const { data, error } = await supabase.from('expenses').update(norm).eq('id', id).select().single();
     if (error) throw error;
     return data;
   } catch (e) {

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Modal from '../components/Modal';
 import { useToast } from '../components/Toast';
-import { createExpense, listExpenses, totalSpentInMonth } from '../services/expensesService';
+import { createExpenseSafe, listExpenses, totalSpentInMonth } from '../services/expensesService';
 import { listBudgets } from '../services/budgetsService';
 import { ensureDefaultCategories, listCategories } from '../services/categoriesService';
 
@@ -61,7 +61,7 @@ export default function DashboardPage({ session }) {
       setRecent((prev) => [optimistic, ...prev].slice(0, 5));
       setAdding(false);
       setForm({ amount: '', date: new Date().toISOString().slice(0, 10), merchant: '', category_id: '' });
-      await createExpense(optimistic);
+      await createExpenseSafe(optimistic);
       show('success', 'Expense added');
       // Refetch recent/spent lightly
       const rec = await listExpenses({ userId });

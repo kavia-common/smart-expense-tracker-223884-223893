@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Modal from '../components/Modal';
 import { useToast } from '../components/Toast';
-import { createExpense, deleteExpense, listExpenses, updateExpense } from '../services/expensesService';
+import { createExpenseSafe, deleteExpense, listExpenses, updateExpense } from '../services/expensesService';
 import { listCategories } from '../services/categoriesService';
 import { uploadReceipt } from '../services/storageService';
 
@@ -90,7 +90,7 @@ export default function ExpensesPage({ session }) {
         };
         setItems((prev) => [optimistic, ...prev]);
         try {
-          const created = await createExpense(optimistic);
+          const created = await createExpenseSafe(optimistic);
           setItems((prev) => prev.map((x) => (x.id === optimistic.id ? created : x)));
           show('success', 'Expense added');
         } catch (err) {
