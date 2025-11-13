@@ -1,5 +1,14 @@
 import { supabase } from '../lib/supabaseClient';
 
+/**
+ * Build a concise error message from Supabase error objects.
+ */
+function toMessage(err) {
+  const msg = err?.message || err?.error_description || err?.hint || 'Unknown error';
+  const code = err?.code ? ` [${err.code}]` : '';
+  return `${msg}${code}`;
+}
+
 // PUBLIC_INTERFACE
 export async function listExpenses({ userId, fromDate, toDate, categoryId }) {
   try {
@@ -17,7 +26,8 @@ export async function listExpenses({ userId, fromDate, toDate, categoryId }) {
     if (error) throw error;
     return data || [];
   } catch (e) {
-    console.error('listExpenses error', e?.message);
+    console.error('listExpenses error', e);
+    // Return empty array but also attach info for caller if needed in future
     return [];
   }
 }
@@ -30,8 +40,13 @@ export async function createExpense(expense) {
     if (error) throw error;
     return data;
   } catch (e) {
-    console.error('createExpense error', e?.message);
-    throw e;
+    // Improve message to guide setup (RLS/table)
+    const msg = toMessage(e);
+    console.error('createExpense error', e);
+    const hint = 'Ensure table "expenses" exists and RLS allows auth.uid() = user_id.';
+    const wrapped = new Error(`Create expense failed: ${msg}. ${hint}`);
+    wrapped.cause = e;
+    throw wrapped;
   }
 }
 
@@ -42,8 +57,11 @@ export async function updateExpense(id, patch) {
     if (error) throw error;
     return data;
   } catch (e) {
-    console.error('updateExpense error', e?.message);
-    throw e;
+    const msg = toMessage(e);
+    console.error('updateExpense error', e);
+    const wrapped = new Error(`Update expense failed: ${msg}`);
+    wrapped.cause = e;
+    throw wrapped;
   }
 }
 
@@ -54,7 +72,7 @@ export async function deleteExpense(id) {
     if (error) throw error;
     return true;
   } catch (e) {
-    console.error('deleteExpense error', e?.message);
+    console.error('deleteExpense error', e);
     return false;
   }
 }
@@ -78,7 +96,7 @@ export async function sumExpensesByCategory({ userId, month }) {
     });
     return map;
   } catch (e) {
-    console.error('sumExpensesByCategory error', e?.message);
+    console.error('sumExpensesByCategory error', e);
     return {};
   }
 }
@@ -97,7 +115,7 @@ export async function totalSpentInMonth({ userId, month }) {
     if (error) throw error;
     return (data || []).reduce((acc, x) => acc + Number(x.amount || 0), 0);
   } catch (e) {
-    console.error('totalSpentInMonth error', e?.message);
+    console.error('totalSpentInMonth error', e);
     return 0;
   }
 }

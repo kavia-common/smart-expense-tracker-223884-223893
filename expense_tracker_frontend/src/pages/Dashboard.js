@@ -69,7 +69,8 @@ export default function DashboardPage({ session }) {
       setRecent(rec.slice(0, 5));
       setSpent(sp);
     } catch (e) {
-      show('error', 'Failed to add expense');
+      const msg = e?.message || 'Failed to add expense';
+      show('error', msg);
     }
   }
 

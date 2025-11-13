@@ -93,8 +93,9 @@ export default function ExpensesPage({ session }) {
           const created = await createExpense(optimistic);
           setItems((prev) => prev.map((x) => (x.id === optimistic.id ? created : x)));
           show('success', 'Expense added');
-        } catch {
-          show('error', 'Failed to add expense. Refreshing list.');
+        } catch (err) {
+          const msg = err?.message || 'Failed to add expense. Refreshing list.';
+          show('error', msg);
           await fetchAll();
         }
       }
