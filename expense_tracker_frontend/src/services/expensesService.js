@@ -146,7 +146,11 @@ export async function deleteExpense(id) {
 export async function sumExpensesByCategory({ userId, month }) {
   try {
     const start = `${month}-01`;
-    const end = `${month}-31`;
+    // Compute valid last day of the month by jumping to next month day 0
+    const [y, m] = month.split('-').map((x) => parseInt(x, 10));
+    const endDate = new Date(Date.UTC(m === 12 ? y + 1 : y, m === 12 ? 0 : m, 0)); // day 0 of next month
+    const end = endDate.toISOString().slice(0, 10);
+
     const { data, error } = await supabase
       .from('expenses')
       .select('amount, category_id')
@@ -170,7 +174,10 @@ export async function sumExpensesByCategory({ userId, month }) {
 export async function totalSpentInMonth({ userId, month }) {
   try {
     const start = `${month}-01`;
-    const end = `${month}-31`;
+    const [y, m] = month.split('-').map((x) => parseInt(x, 10));
+    const endDate = new Date(Date.UTC(m === 12 ? y + 1 : y, m === 12 ? 0 : m, 0)); // last day of month
+    const end = endDate.toISOString().slice(0, 10);
+
     const { data, error } = await supabase
       .from('expenses')
       .select('amount')

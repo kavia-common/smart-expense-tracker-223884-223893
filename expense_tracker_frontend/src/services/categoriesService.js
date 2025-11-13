@@ -11,7 +11,10 @@ export async function listCategories(userId) {
       .eq('user_id', userId)
       .order('name', { ascending: true });
 
-    if (status === 404) return [];
+    if (status === 404) {
+      console.warn('Categories table missing. Run docs/supabase_core_setup.sql to create categories.');
+      return [];
+    }
     if (error) throw error;
     return data || [];
   } catch (e) {
@@ -32,8 +35,15 @@ export async function ensureDefaultCategories(userId) {
   try {
     const current = await listCategories(userId);
     if (current.length > 0) return current;
+
+    // Try to insert defaults. If table missing (404/42P01), return gracefully with guidance.
     const toInsert = defaults.map((c) => ({ ...c, user_id: userId }));
-    const { data, error } = await supabase.from(table).insert(toInsert).select();
+    const { data, error, status } = await supabase.from(table).insert(toInsert).select();
+
+    if (status === 404 || (error && (error.code === '42P01' || /relation .* does not exist/i.test(error.message)))) {
+      console.warn('Categories table not found. Please run docs/supabase_core_setup.sql to create tables.');
+      return [];
+    }
     if (error) throw error;
     return data || [];
   } catch (e) {

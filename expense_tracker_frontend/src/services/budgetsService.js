@@ -2,12 +2,23 @@ import { supabase } from '../lib/supabaseClient';
 import { totalSpentInMonth } from './expensesService';
 
 // PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE
+ * List budgets for a user, optionally filtered by month (YYYY-MM).
+ * Schema expected: budgets(id, user_id, category_id nullable, month text 'YYYY-MM', limit numeric)
+ */
 export async function listBudgets(userId, month) {
   try {
-    let q = supabase.from('budgets').select('id,user_id,category_id,month,limit').eq('user_id', userId);
+    let q = supabase
+      .from('budgets')
+      .select('id,user_id,category_id,month,limit')
+      .eq('user_id', userId);
     if (month) q = q.eq('month', month);
     const { data, error, status } = await q;
-    if (status === 404) return [];
+    if (status === 404) {
+      console.warn('Budgets table missing. Run docs/supabase_core_setup.sql to create budgets.');
+      return [];
+    }
     if (error) throw error;
     return data || [];
   } catch (e) {
