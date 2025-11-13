@@ -1,0 +1,4 @@
+{
+    "command": "npm install",
+    "working_directory": "/home/kavia/workspace/code-generation/smart-expense-tracker-223884-223893/expense_tracker_frontend"
+}
