@@ -175,10 +175,11 @@ export async function deleteExpense(id) {
 export async function sumExpensesByCategory({ userId, month }) {
   try {
     const start = `${month}-01`;
-    // Compute valid last day of the month by jumping to next month day 0
-    const [y, m] = month.split('-').map((x) => parseInt(x, 10));
-    const endDate = new Date(Date.UTC(m === 12 ? y + 1 : y, m === 12 ? 0 : m, 0)); // day 0 of next month
-    const end = endDate.toISOString().slice(0, 10);
+    const [yStr, mStr] = month.split('-');
+    const y = parseInt(yStr, 10);
+    const m0 = parseInt(mStr, 10) - 1;
+    const endDate = new Date(y, m0 + 1, 0); // last day of target month
+    const end = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
     const { data, error } = await supabase
       .from('expenses')
@@ -194,29 +195,52 @@ export async function sumExpensesByCategory({ userId, month }) {
     });
     return map;
   } catch (e) {
-    console.error('sumExpensesByCategory error', e);
+    console.error('sumExpensesByCategory error', e?.message || e);
     return {};
   }
 }
 
 // PUBLIC_INTERFACE
 export async function totalSpentInMonth({ userId, month }) {
+  /**
+   * PUBLIC_INTERFACE
+   * Returns the numeric total spent for a given user within the provided month (YYYY-MM).
+   * - Computes the month date range with actual last day via new Date(year, month+1, 0)
+   * - Filters by user_id and date range
+   * - Uses aggregate sum to avoid client-side summation overhead
+   * - Safely returns 0 on empty/null results and logs errors
+   */
   try {
-    const start = `${month}-01`;
-    const [y, m] = month.split('-').map((x) => parseInt(x, 10));
-    const endDate = new Date(Date.UTC(m === 12 ? y + 1 : y, m === 12 ? 0 : m, 0)); // last day of month
-    const end = endDate.toISOString().slice(0, 10);
+    if (!userId) throw new Error('totalSpentInMonth requires userId');
+    if (!month || !/^\d{4}-\d{2}$/.test(month)) throw new Error('totalSpentInMonth requires month in YYYY-MM');
 
+    // Compute month range: start inclusive, end inclusive
+    const start = `${month}-01`;
+    const [yStr, mStr] = month.split('-');
+    const y = parseInt(yStr, 10);
+    const m0 = parseInt(mStr, 10) - 1; // zero-based for JS Date
+    const endDate = new Date(y, m0 + 1, 0); // last day of target month in local time
+    // Format YYYY-MM-DD; since Supabase compares dates (no timezone), this is fine
+    const end = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+
+    // Perform an aggregate sum. supabase-js does not expose sum directly in select, but we can select a count expression.
+    // Use PostgREST computed column selection with `sum(amount)` aliased as total.
     const { data, error } = await supabase
       .from('expenses')
-      .select('amount')
+      .select('total:sum(amount)')
       .eq('user_id', userId)
       .gte('date', start)
-      .lte('date', end);
+      .lte('date', end)
+      .single();
+
     if (error) throw error;
-    return (data || []).reduce((acc, x) => acc + Number(x.amount || 0), 0);
+
+    // data may be null or { total: null } when no rows match
+    const total = Number(data?.total || 0);
+    return Number.isFinite(total) ? total : 0;
   } catch (e) {
-    console.error('totalSpentInMonth error', e);
+    // Surface detailed message to console; callers can toast if needed
+    console.error('totalSpentInMonth error', e?.message || e);
     return 0;
   }
 }

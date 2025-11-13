@@ -37,6 +37,10 @@ export default function DashboardPage({ session }) {
       setSpent(sp);
       setBudgets(b);
       setLoading(false);
+      if (sp === 0 && rec.length > 0) {
+        // Likely an error or month filter issue; surface a soft hint
+        console.warn('Total Spent computed as 0 while there are expenses in the month. Check month/date filters and RLS.');
+      }
     })();
     return () => { active = false; };
   }, [userId, month]);
@@ -81,6 +85,9 @@ export default function DashboardPage({ session }) {
       const sp = await totalSpentInMonth({ userId, month });
       setRecent(rec.slice(0, 5));
       setSpent(sp);
+      if (sp === 0 && rec.length > 0) {
+        console.warn('Total Spent is 0 after adding expense; verify sum aggregation and date range.');
+      }
     } catch (e) {
       const msg = e?.message || 'Failed to add expense';
       show('error', msg);
