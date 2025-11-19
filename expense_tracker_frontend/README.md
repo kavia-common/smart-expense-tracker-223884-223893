@@ -1,91 +1,83 @@
 # Ocean Expenses - Expense Tracker Frontend (React + Supabase)
 
-Modern expense tracker with budgets, receipts, and insights. Ocean Professional theme.
+Modern expense tracker with budgets, receipts, and insights. Ocean Professional theme.  
+This project features a real-time budgeting and analytics web app built with React, fully integrated with Supabase for authentication, data storage, and file uploads.
 
-## Prerequisites
+## Quick Start
+
+### Prerequisites
 
 - Node.js 18+
-- Supabase project with:
+- Supabase project (create at https://app.supabase.com)
   - Auth enabled (Email/Password)
   - Tables: `profiles`, `categories`, `expenses`, `budgets`
-  - Storage bucket: `receipts` (public)
+  - Storage bucket: `receipts` (public is recommended for SPA)
 
-## Environment variables
+### Running Locally
 
-Create a `.env` file (do not commit secrets). Required keys:
+1. Clone repo
+2. `cd expense_tracker_frontend`
+3. Setup `.env` file (see below)
+4. `npm install`
+5. `npm start`
 
-- REACT_APP_SUPABASE_URL
-- REACT_APP_SUPABASE_KEY
-- REACT_APP_FRONTEND_URL
-- Optional others supported by platform:
-  - REACT_APP_API_BASE
-  - REACT_APP_BACKEND_URL
-  - REACT_APP_WS_URL
-  - REACT_APP_NODE_ENV
-  - REACT_APP_ENABLE_SOURCE_MAPS
-  - REACT_APP_PORT
-  - REACT_APP_TRUST_PROXY
-  - REACT_APP_LOG_LEVEL
-  - REACT_APP_HEALTHCHECK_PATH
-  - REACT_APP_FEATURE_FLAGS
-  - REACT_APP_EXPERIMENTS_ENABLED
+App opens at http://localhost:3000.
+
+### Environment Variables
+
+Required in `.env` (do **not** commit secrets):
+
+- `REACT_APP_SUPABASE_URL`
+- `REACT_APP_SUPABASE_KEY`
+- `REACT_APP_FRONTEND_URL`
+- Additional variables supported:
+  - `REACT_APP_API_BASE`
+  - `REACT_APP_BACKEND_URL`
+  - `REACT_APP_WS_URL`
+  - `REACT_APP_NODE_ENV`
+  - `REACT_APP_ENABLE_SOURCE_MAPS`
+  - `REACT_APP_PORT`
+  - `REACT_APP_TRUST_PROXY`
+  - `REACT_APP_LOG_LEVEL`
+  - `REACT_APP_HEALTHCHECK_PATH`
+  - `REACT_APP_FEATURE_FLAGS`
+  - `REACT_APP_EXPERIMENTS_ENABLED`
 
 See `.env.example` for template.
 
-## Install & Run
+### Supabase Database Schema
 
-```bash
-npm install
-npm start
-```
+Refer to [`docs/supabase_core_setup.sql`](docs/supabase_core_setup.sql) and [`docs/supabase_expenses_setup.sql`](docs/supabase_expenses_setup.sql) for built-in schema, row-level security, and storage configuration.
 
-Open http://localhost:3000.
+## Features Overview
 
-## Supabase Schema (expected)
+- **Authentication:** Secure sign in/up (Supabase Auth), password reset.
+- **Expenses:** CRUD operations, filtering, and receipt uploads.
+- **Budgets:** Per-category, month-based budgeting with live utilization.
+- **Analytics:** Charts for category and timeline trends (using chart.js).
+- **Receipts:** File upload to Supabase Storage, view receipts.
+- **Accessibility:** Labeled inputs, keyboard navigation, focus styles.
+- **UI Theme:** Ocean Professional—blue/amber, clean dashboard.
+- **Testing:** Jest, @testing-library/react, with test hooks (`data-testid`).
+- **Security:** No secrets in code; all data operations and storage secured via Supabase RBAC/RLS.
+- **Error Handling:** Friendly toasts, handling server errors gracefully.
 
-- profiles: id (uuid, pk), display_name (text)
-- categories: id (uuid, pk), user_id (uuid), name (text), color (text)
-- expenses: id (uuid, pk), user_id (uuid), amount (numeric), category_id (uuid, nullable), merchant (text), notes (text), date (date), receipt_url (text)
-- budgets: id (uuid, pk), user_id (uuid), category_id (uuid, nullable), month (text YYYY-MM), limit (numeric)
+## Docs
 
-Note: Client gracefully handles 404/perms errors by showing empty data or toasts.
-
-## Features
-
-- Auth: Sign up/sign in, password reset
-- Expenses: CRUD, filters, receipt upload to Storage (bucket `receipts`)
-- Budgets: Per category, month; real-time utilization bars
-- Insights: Pie (by category), line (over time) using chart.js
-- Dashboard: KPIs, recent expenses, quick add modal
-- Settings: Manage display name, logout
-- Accessibility: Labeled inputs, validation, disabled/loading states
-- Test hooks: data-testid on core actions
-
-## Theme
-
-Ocean Professional palette:
-- Primary: #2563EB
-- Secondary: #F59E0B
-- Error: #EF4444
-- Background: #f9fafb
-- Surface: #ffffff
-- Text: #111827
-
-See `src/theme/global.css` and `src/theme/theme.js`.
-
-## Security
-
-- No secrets in code. Reads via process.env
-- Auth session persisted by supabase-js
-- Avoids logging PII
-
-## Notes
-
-- If you change auth email redirects, update REACT_APP_FRONTEND_URL accordingly.
-- Ensure storage bucket `receipts` is public or generate signed URLs server-side.
+See `/docs/` for detailed PRD, architecture, setup, API/data model, testing, security, and deployment notes.
 
 ## Scripts
 
-- npm start - dev server
-- npm test - CRA tests
-- npm run build - production build
+- `npm start` – dev server
+- `npm test` – unit/integration tests
+- `npm run build` – production build
+
+## Live Demo / Preview
+
+If deployed, open [https://vscode-internal-23422-beta.beta01.cloud.kavia.ai:3000](https://vscode-internal-23422-beta.beta01.cloud.kavia.ai:3000)
+
+---
+Sources:  
+- src/ (code structure, theme files, services, components)
+- docs/supabase_core_setup.sql, docs/supabase_expenses_setup.sql (DB setup)
+- package.json, setup files
